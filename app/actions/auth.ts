@@ -116,7 +116,7 @@ export async function logout() {
 }
 
 // Get user ID from token (for other actions)
-export function getUserIdFromToken(token: string | null): string | null {
+export async function getUserIdFromToken(token: string | null): Promise<string | null> {
   if (!token) return null;
   
   const tokenData = tokenStore.get(token);
