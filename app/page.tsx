@@ -1,23 +1,12 @@
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { cookies } from "next/headers"
-import { db } from "@/lib/db"
+import { getUserIdFromToken } from "@/app/actions/auth"
 
 export default async function Home() {
-  // Check if user is logged in
-  const token = cookies().get("session-token")?.value
-  
-  if (token) {
-    const session = await db.session.findFirst({
-      where: { sessionToken: token },
-      include: { user: true },
-    })
-    
-    if (session && session.expires > new Date()) {
-      redirect("/chat")
-    }
-  }
+  // We can't access query parameters in server components at the root level
+  // So we don't check tokens here and just render the home page
+  // The chat pages will handle authentication
 
   return (
     <div className="flex min-h-screen flex-col">

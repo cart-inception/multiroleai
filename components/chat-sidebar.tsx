@@ -18,7 +18,11 @@ interface Chat {
   updatedAt: Date
 }
 
-export function ChatSidebar() {
+interface ChatSidebarProps {
+  token?: string;
+}
+
+export function ChatSidebar({ token }: ChatSidebarProps) {
   const [chats, setChats] = useState<Chat[]>([])
   const [loading, setLoading] = useState(true)
   const pathname = usePathname()
@@ -26,8 +30,9 @@ export function ChatSidebar() {
 
   useEffect(() => {
     async function loadChats() {
+      if (!token) return;
       try {
-        const userChats = await getUserChats()
+        const userChats = await getUserChats(token)
         setChats(userChats)
       } catch (error) {
         console.error("Failed to load chats:", error)
@@ -40,8 +45,9 @@ export function ChatSidebar() {
   }, [pathname])
 
   async function handleCreateChat() {
+    if (!token) return;
     try {
-      const newChat = await createChat()
+      const newChat = await createChat(token)
       setChats((prevChats) => [newChat, ...prevChats])
     } catch (error) {
       console.error("Failed to create chat:", error)
@@ -51,9 +57,10 @@ export function ChatSidebar() {
   async function handleDeleteChat(chatId: string, e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
+    if (!token) return;
 
     try {
-      await deleteChat(chatId)
+      await deleteChat(chatId, token)
       setChats((prevChats) => prevChats.filter((chat) => chat.id !== chatId))
     } catch (error) {
       console.error("Failed to delete chat:", error)

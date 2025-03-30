@@ -6,9 +6,18 @@ import { redirect } from "next/navigation"
 import crypto from "crypto"
 import { cookies } from "next/headers"
 
-// Simple JWT token generation
-function generateToken(userId: string) {
-  return `${userId}.${Date.now()}.${crypto.randomBytes(16).toString('hex')}`
+// Create a map of auth tokens in memory (not persisted)
+interface TokenData {
+  userId: string;
+  expires: Date;
+}
+
+// In a real app, you'd use Redis or another persistence mechanism
+const tokenStore = new Map<string, TokenData>();
+
+// Helper function to generate a token
+function generateToken() {
+  return crypto.randomBytes(32).toString('hex');
 }
 
 export async function login(formData: FormData) {
@@ -37,40 +46,18 @@ export async function login(formData: FormData) {
     }
 
     // Generate a token
-    const token = generateToken(user.id)
+    const token = generateToken();
+    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
     
-    // Store token in db and get the existing token if it exists
-    let existingSession = await db.session.findFirst({
-      where: { userId: user.id },
-    })
+    // Store token in memory
+    tokenStore.set(token, {
+      userId: user.id,
+      expires
+    });
     
-    if (existingSession) {
-      await db.session.update({
-        where: { id: existingSession.id },
-        data: {
-          sessionToken: token,
-          expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        },
-      })
-    } else {
-      await db.session.create({
-        data: {
-          userId: user.id,
-          sessionToken: token,
-          expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        },
-      })
-    }
+    // Redirect with token as query parameter
+    redirect(`/chat?token=${token}`);
     
-    // Set token in cookie - using this pattern to avoid issues with Next.js cookies()
-    cookies().set("session-token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
-      path: "/",
-    })
-    
-    redirect("/chat")
   } catch (error) {
     console.error("Login error:", error)
     return { error: "An error occurred during login" }
@@ -106,26 +93,18 @@ export async function register(formData: FormData) {
     })
 
     // Generate a token
-    const token = generateToken(user.id)
+    const token = generateToken();
+    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
     
-    // Create a session
-    await db.session.create({
-      data: {
-        userId: user.id,
-        sessionToken: token,
-        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-      },
-    })
+    // Store token in memory
+    tokenStore.set(token, {
+      userId: user.id,
+      expires
+    });
     
-    // Set token in cookie - using this pattern to avoid issues with Next.js cookies()
-    cookies().set("session-token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
-      path: "/",
-    })
+    // Redirect with token as query parameter
+    redirect(`/chat?token=${token}`);
     
-    redirect("/chat")
   } catch (error) {
     console.error("Registration error:", error)
     return { error: "An error occurred during registration" }
@@ -133,28 +112,20 @@ export async function register(formData: FormData) {
 }
 
 export async function logout() {
-  // Get the cookie
-  const token = cookies().get("session-token")?.value
+  redirect("/");
+}
+
+// Get user ID from token (for other actions)
+export function getUserIdFromToken(token: string | null): string | null {
+  if (!token) return null;
   
-  if (token) {
-    try {
-      // Find and delete the session
-      const session = await db.session.findFirst({
-        where: { sessionToken: token },
-      })
-      
-      if (session) {
-        await db.session.delete({
-          where: { id: session.id },
-        })
-      }
-    } catch (error) {
-      console.error("Error deleting session:", error)
-    }
+  const tokenData = tokenStore.get(token);
+  if (!tokenData) return null;
+  
+  if (tokenData.expires < new Date()) {
+    tokenStore.delete(token);
+    return null;
   }
   
-  // Delete the cookie
-  cookies().delete("session-token")
-  
-  redirect("/")
+  return tokenData.userId;
 }

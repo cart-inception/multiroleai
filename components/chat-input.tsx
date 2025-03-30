@@ -9,10 +9,11 @@ import { useState, useRef, useEffect } from "react"
 import { SendIcon } from "lucide-react"
 
 interface ChatInputProps {
-  chatId: string
+  chatId: string;
+  token?: string;
 }
 
-export function ChatInput({ chatId }: ChatInputProps) {
+export function ChatInput({ chatId, token }: ChatInputProps) {
   const [input, setInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -32,7 +33,8 @@ export function ChatInput({ chatId }: ChatInputProps) {
     try {
       setIsSubmitting(true)
       setInput("")
-      await sendMessage(chatId, input.trim())
+      if (!token) return;
+      await sendMessage(chatId, input.trim(), token)
     } catch (error) {
       console.error("Failed to send message:", error)
     } finally {
