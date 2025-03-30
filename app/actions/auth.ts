@@ -39,3 +39,42 @@ export async function login(formData: FormData) {
     return { error: "An unexpected error occurred" }
   }
 }
+
+export async function register(formData: FormData) {
+  const name = formData.get('name') as string
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+  const confirmPassword = formData.get('confirmPassword') as string
+
+  if (!name || !email || !password) {
+    return { error: "All fields are required" }
+  }
+
+  if (password !== confirmPassword) {
+    return { error: "Passwords do not match" }
+  }
+
+  try {
+    // In a real app, you would create the user in your database here
+    // For now, we'll simulate a successful registration
+
+    // Create a token (in a real app, use a proper JWT)
+    const token = createHash('sha256').update(`${email}-${Date.now()}`).digest('hex')
+    
+    // Store the token in a secure, HTTP-only cookie
+    cookies().set({
+      name: 'authToken',
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/'
+    })
+
+    // Redirect to the chat page after successful registration
+    redirect(`/chat?token=${token}`)
+  } catch (error) {
+    console.error("Registration error:", error)
+    return { error: "An unexpected error occurred during registration" }
+  }
+}

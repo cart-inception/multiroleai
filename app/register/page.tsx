@@ -1,64 +1,121 @@
-"use client"
+'use client'
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { register } from "@/app/actions/auth"
-import Link from "next/link"
-import { useState } from "react"
+import { useState } from 'react'
+import { register } from '../actions/auth'
+import Link from 'next/link'
 
-export default function RegisterPage() {
+export default function Register() {
   const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   async function handleSubmit(formData: FormData) {
+    setIsLoading(true)
     setError(null)
+    
     try {
-      // The register function will redirect on success
+      // The register function will handle redirection on success
       const result = await register(formData)
-      // This will only run if register returns without redirecting
+      
+      // If we get here (no redirect occurred) and have an error
       if (result?.error) {
         setError(result.error)
       }
-    } catch (error) {
-      // Ignore NEXT_REDIRECT errors - they're actually successful redirects
-      if (!error.toString().includes('NEXT_REDIRECT')) {
-        console.error("Unexpected error:", error)
-        setError("An unexpected error occurred")
-      }
-      // NEXT_REDIRECT errors will be handled automatically by Next.js
+    } catch (e) {
+      // This is expected for redirects - Next.js will handle it
+      console.log("Form submission complete")
+    } finally {
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="mx-auto max-w-sm space-y-6 p-4">
-        <div className="space-y-2 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gray-50">
+      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
+        <div className="text-center">
           <h1 className="text-3xl font-bold">Create an Account</h1>
-          <p className="text-gray-500 dark:text-gray-400">Enter your information to create an account</p>
+          <p className="mt-2 text-gray-600">Join us today</p>
         </div>
-        <form action={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" name="name" required />
+
+        <form action={handleSubmit} className="mt-8 space-y-6">
+          <div className="rounded-md shadow-sm space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                className="appearance-none relative block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Full name"
+              />
+            </div>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email address
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                className="appearance-none relative block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Email address"
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                className="appearance-none relative block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Password"
+              />
+            </div>
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                className="appearance-none relative block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Confirm password"
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required />
+
+          {error && (
+            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              {isLoading ? 'Creating account...' : 'Register'}
+            </button>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required />
-          </div>
-          {error && <div className="text-sm text-red-500">{error}</div>}
-          <Button type="submit" className="w-full">
-            Create Account
-          </Button>
         </form>
-        <div className="text-center text-sm">
-          Already have an account?{" "}
-          <Link href="/login" className="underline">
-            Login
-          </Link>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Already have an account?{' '}
+            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+              Log in
+            </Link>
+          </p>
         </div>
       </div>
     </div>
