@@ -20,7 +20,8 @@ export async function login(formData: FormData) {
       const token = createHash('sha256').update(`${email}-${Date.now()}`).digest('hex')
       
       // Store the token in a secure, HTTP-only cookie
-      cookies().set({
+      const cookieStore = await cookies();
+      cookieStore.set({
         name: 'authToken',
         value: token,
         httpOnly: true,
@@ -62,7 +63,8 @@ export async function register(formData: FormData) {
     const token = createHash('sha256').update(`${email}-${Date.now()}`).digest('hex')
     
     // Store the token in a secure, HTTP-only cookie
-    cookies().set({
+    const cookieStore = await cookies();
+    cookieStore.set({
       name: 'authToken',
       value: token,
       httpOnly: true,
