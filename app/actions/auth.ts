@@ -2,7 +2,7 @@
 
 import { signIn, signOut } from "@/auth"
 import { db } from "@/lib/db"
-import { hash } from "bcrypt"
+import bcrypt from "bcrypt"
 import { AuthError } from "next-auth"
 import { redirect } from "next/navigation"
 
@@ -42,7 +42,7 @@ export async function register(formData: FormData) {
     return { error: "Email already in use" }
   }
 
-  const hashedPassword = await hash(password, 10)
+  const hashedPassword = await bcrypt.hash(password, 10)
 
   await db.user.create({
     data: {
