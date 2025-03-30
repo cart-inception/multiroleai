@@ -40,7 +40,8 @@ export async function login(formData: FormData) {
     })
 
     // Set a cookie
-    cookies().set({
+    const cookieStore = cookies()
+    await cookieStore.set({
       name: "next-auth.session-token",
       value: session.sessionToken,
       httpOnly: true,
@@ -94,7 +95,8 @@ export async function register(formData: FormData) {
     })
 
     // Set a cookie
-    cookies().set({
+    const cookieStore = cookies()
+    await cookieStore.set({
       name: "next-auth.session-token",
       value: session.sessionToken,
       httpOnly: true,
@@ -111,7 +113,7 @@ export async function register(formData: FormData) {
 }
 
 export async function logout() {
-  cookies().delete("next-auth.session-token")
+  const cookieStore = cookies()
+  cookieStore.delete("next-auth.session-token")
   redirect("/")
 }
-

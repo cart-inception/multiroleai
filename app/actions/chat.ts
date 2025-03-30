@@ -1,20 +1,36 @@
 "use server"
 
-import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { getGeminiResponse } from "@/lib/gemini"
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
 
-export async function createChat() {
-  const session = await auth()
-
-  if (!session?.user?.id) {
+// Helper function to get the current user ID
+async function getCurrentUserId() {
+  const sessionToken = cookies().get("next-auth.session-token")?.value
+  
+  if (!sessionToken) {
     throw new Error("Unauthorized")
   }
+  
+  const session = await db.session.findUnique({
+    where: { sessionToken },
+    include: { user: true },
+  })
+  
+  if (!session || session.expires < new Date() || !session.user?.id) {
+    throw new Error("Unauthorized")
+  }
+  
+  return session.user.id
+}
 
+export async function createChat() {
+  const userId = await getCurrentUserId()
+  
   const chat = await db.chat.create({
     data: {
-      userId: session.user.id,
+      userId,
       title: "New Chat",
     },
   })
@@ -24,16 +40,12 @@ export async function createChat() {
 }
 
 export async function getChatById(chatId: string) {
-  const session = await auth()
-
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized")
-  }
+  const userId = await getCurrentUserId()
 
   const chat = await db.chat.findUnique({
     where: {
       id: chatId,
-      userId: session.user.id,
+      userId,
     },
     include: {
       messages: {
@@ -48,15 +60,11 @@ export async function getChatById(chatId: string) {
 }
 
 export async function getUserChats() {
-  const session = await auth()
-
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized")
-  }
+  const userId = await getCurrentUserId()
 
   const chats = await db.chat.findMany({
     where: {
-      userId: session.user.id,
+      userId,
     },
     orderBy: {
       updatedAt: "desc",
@@ -67,17 +75,13 @@ export async function getUserChats() {
 }
 
 export async function sendMessage(chatId: string, content: string) {
-  const session = await auth()
-
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized")
-  }
+  const userId = await getCurrentUserId()
 
   // Get the chat and verify ownership
   const chat = await db.chat.findUnique({
     where: {
       id: chatId,
-      userId: session.user.id,
+      userId,
     },
     include: {
       messages: {
@@ -134,19 +138,14 @@ export async function sendMessage(chatId: string, content: string) {
 }
 
 export async function deleteChat(chatId: string) {
-  const session = await auth()
-
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized")
-  }
+  const userId = await getCurrentUserId()
 
   await db.chat.delete({
     where: {
       id: chatId,
-      userId: session.user.id,
+      userId,
     },
   })
 
   revalidatePath("/chat")
 }
-
