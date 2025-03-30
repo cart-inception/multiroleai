@@ -13,7 +13,7 @@ export default async function ChatLayout({
 }) {
   // Check if user is logged in, first from search params then from cookies
   const tokenFromParams = searchParams?.token
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const tokenFromCookie = cookieStore.get('authToken')?.value
   const token = tokenFromParams || tokenFromCookie
   

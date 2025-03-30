@@ -4,10 +4,17 @@ import { db } from "@/lib/db"
 import { getGeminiResponse } from "@/lib/gemini"
 import { revalidatePath } from "next/cache"
 import { getUserIdFromToken } from "@/app/actions/auth"
+import { cookies } from "next/headers"
 
 // Helper function to get the current user ID
-async function getCurrentUserId(token: string) {
-  const userId = getUserIdFromToken(token)
+async function getCurrentUserId(token?: string) {
+  // If token is not provided, try to get it from cookies
+  if (!token) {
+    const cookieStore = cookies()
+    token = cookieStore.get('authToken')?.value
+  }
+  
+  const userId = await getUserIdFromToken(token)
   
   if (!userId) {
     throw new Error("Unauthorized")
@@ -16,8 +23,9 @@ async function getCurrentUserId(token: string) {
   return userId
 }
 
-export async function createChat(token: string) {
-  const userId = await getCurrentUserId(token)
+export async function createChat(formData?: FormData) {
+  // When called from a form action, we need to get the token from cookies
+  const userId = await getCurrentUserId()
   
   const chat = await db.chat.create({
     data: {

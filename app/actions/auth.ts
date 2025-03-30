@@ -4,10 +4,10 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createHash } from 'crypto'
 
-export async function getUserIdFromToken(token: string) {
+export async function getUserIdFromToken(token: string | undefined | null) {
   // In a real app, you would verify the token (e.g., JWT verification)
   // For this example, we're just returning a mock user ID if the token exists
-  if (!token) return null
+  if (!token || typeof token !== 'string') return null
   
   // This is a simplification. In a real app, you would decode the token
   // and extract the user ID from it.
