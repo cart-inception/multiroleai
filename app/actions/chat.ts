@@ -7,14 +7,14 @@ import { cookies } from "next/headers"
 
 // Helper function to get the current user ID
 async function getCurrentUserId() {
-  const sessionToken = cookies().get("next-auth.session-token")?.value
+  const token = cookies().get("session-token")?.value
   
-  if (!sessionToken) {
+  if (!token) {
     throw new Error("Unauthorized")
   }
   
-  const session = await db.session.findUnique({
-    where: { sessionToken },
+  const session = await db.session.findFirst({
+    where: { sessionToken: token },
     include: { user: true },
   })
   

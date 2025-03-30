@@ -14,14 +14,14 @@ interface ChatPageProps {
 
 export default async function ChatPage({ params }: ChatPageProps) {
   // Check if user is logged in
-  const sessionToken = cookies().get("next-auth.session-token")?.value
+  const token = cookies().get("session-token")?.value
   
-  if (!sessionToken) {
+  if (!token) {
     redirect("/login")
   }
   
-  const session = await db.session.findUnique({
-    where: { sessionToken },
+  const session = await db.session.findFirst({
+    where: { sessionToken: token },
     include: { user: true },
   })
   

@@ -6,11 +6,11 @@ import { db } from "@/lib/db"
 
 export default async function Home() {
   // Check if user is logged in
-  const sessionToken = cookies().get("next-auth.session-token")?.value
+  const token = cookies().get("session-token")?.value
   
-  if (sessionToken) {
-    const session = await db.session.findUnique({
-      where: { sessionToken },
+  if (token) {
+    const session = await db.session.findFirst({
+      where: { sessionToken: token },
       include: { user: true },
     })
     

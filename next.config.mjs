@@ -20,6 +20,9 @@ const nextConfig = {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
+    serverActions: {
+      allowedOrigins: ['localhost:3000', '69.62.68.201'],
+    }
   },
 }
 

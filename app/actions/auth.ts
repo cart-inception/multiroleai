@@ -3,7 +3,13 @@
 import { db } from "@/lib/db"
 import { hash, compare } from "bcrypt"
 import { redirect } from "next/navigation"
+import crypto from "crypto"
 import { cookies } from "next/headers"
+
+// Simple JWT token generation
+function generateToken(userId: string) {
+  return `${userId}.${Date.now()}.${crypto.randomBytes(16).toString('hex')}`
+}
 
 export async function login(formData: FormData) {
   const email = formData.get("email") as string
@@ -30,26 +36,40 @@ export async function login(formData: FormData) {
       return { error: "Invalid credentials" }
     }
 
-    // Create a session
-    const session = await db.session.create({
-      data: {
-        userId: user.id,
-        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        sessionToken: crypto.randomUUID(),
-      },
+    // Generate a token
+    const token = generateToken(user.id)
+    
+    // Store token in db and get the existing token if it exists
+    let existingSession = await db.session.findFirst({
+      where: { userId: user.id },
     })
-
-    // Set a cookie
-    const cookieStore = cookies()
-    await cookieStore.set({
-      name: "next-auth.session-token",
-      value: session.sessionToken,
+    
+    if (existingSession) {
+      await db.session.update({
+        where: { id: existingSession.id },
+        data: {
+          sessionToken: token,
+          expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        },
+      })
+    } else {
+      await db.session.create({
+        data: {
+          userId: user.id,
+          sessionToken: token,
+          expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        },
+      })
+    }
+    
+    // Set token in cookie - using this pattern to avoid issues with Next.js cookies()
+    cookies().set("session-token", token, {
       httpOnly: true,
-      path: "/",
       secure: process.env.NODE_ENV === "production",
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+      path: "/",
     })
-
+    
     redirect("/chat")
   } catch (error) {
     console.error("Login error:", error)
@@ -85,26 +105,26 @@ export async function register(formData: FormData) {
       },
     })
 
+    // Generate a token
+    const token = generateToken(user.id)
+    
     // Create a session
-    const session = await db.session.create({
+    await db.session.create({
       data: {
         userId: user.id,
+        sessionToken: token,
         expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        sessionToken: crypto.randomUUID(),
       },
     })
-
-    // Set a cookie
-    const cookieStore = cookies()
-    await cookieStore.set({
-      name: "next-auth.session-token",
-      value: session.sessionToken,
+    
+    // Set token in cookie - using this pattern to avoid issues with Next.js cookies()
+    cookies().set("session-token", token, {
       httpOnly: true,
-      path: "/",
       secure: process.env.NODE_ENV === "production",
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+      path: "/",
     })
-
+    
     redirect("/chat")
   } catch (error) {
     console.error("Registration error:", error)
@@ -113,7 +133,28 @@ export async function register(formData: FormData) {
 }
 
 export async function logout() {
-  const cookieStore = cookies()
-  cookieStore.delete("next-auth.session-token")
+  // Get the cookie
+  const token = cookies().get("session-token")?.value
+  
+  if (token) {
+    try {
+      // Find and delete the session
+      const session = await db.session.findFirst({
+        where: { sessionToken: token },
+      })
+      
+      if (session) {
+        await db.session.delete({
+          where: { id: session.id },
+        })
+      }
+    } catch (error) {
+      console.error("Error deleting session:", error)
+    }
+  }
+  
+  // Delete the cookie
+  cookies().delete("session-token")
+  
   redirect("/")
 }
