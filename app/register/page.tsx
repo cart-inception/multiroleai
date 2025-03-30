@@ -12,9 +12,20 @@ export default function RegisterPage() {
 
   async function handleSubmit(formData: FormData) {
     setError(null)
-    const result = await register(formData)
-    if (result?.error) {
-      setError(result.error)
+    try {
+      // The register function will redirect on success
+      const result = await register(formData)
+      // This will only run if register returns without redirecting
+      if (result?.error) {
+        setError(result.error)
+      }
+    } catch (error) {
+      // Ignore NEXT_REDIRECT errors - they're actually successful redirects
+      if (!error.toString().includes('NEXT_REDIRECT')) {
+        console.error("Unexpected error:", error)
+        setError("An unexpected error occurred")
+      }
+      // NEXT_REDIRECT errors will be handled automatically by Next.js
     }
   }
 

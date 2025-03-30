@@ -12,9 +12,20 @@ export default function LoginPage() {
 
   async function handleSubmit(formData: FormData) {
     setError(null)
-    const result = await login(formData)
-    if (result?.error) {
-      setError(result.error)
+    try {
+      // The login function will redirect on success, so we don't need to handle that case
+      const result = await login(formData)
+      // This will only run if login returns without redirecting
+      if (result?.error) {
+        setError(result.error)
+      }
+    } catch (error) {
+      // Ignore NEXT_REDIRECT errors - they're actually successful redirects
+      if (!error.toString().includes('NEXT_REDIRECT')) {
+        console.error("Unexpected error:", error)
+        setError("An unexpected error occurred")
+      }
+      // NEXT_REDIRECT errors will be handled automatically by Next.js
     }
   }
 
