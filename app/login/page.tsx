@@ -3,26 +3,29 @@
 import { useState } from 'react'
 import { login } from '../actions/auth'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function Login() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   async function handleSubmit(formData: FormData) {
     setIsLoading(true)
     setError(null)
     
     try {
-      // The login function will handle redirection on success
       const result = await login(formData)
       
-      // If we get here (no redirect occurred) and have an error
       if (result?.error) {
         setError(result.error)
+      } else if (result?.success && result?.redirectUrl) {
+        // Use client-side navigation for the redirect
+        router.push(result.redirectUrl)
       }
     } catch (e) {
-      // This is expected for redirects - Next.js will handle it
-      console.log("Form submission complete")
+      console.error("Login error:", e)
+      setError("An unexpected error occurred")
     } finally {
       setIsLoading(false)
     }
