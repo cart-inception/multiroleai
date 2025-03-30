@@ -1,13 +1,22 @@
 import { Button } from "@/components/ui/button"
-import { auth } from "@/auth"
 import Link from "next/link"
 import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
+import { db } from "@/lib/db"
 
 export default async function Home() {
-  const session = await auth()
-
-  if (session?.user) {
-    redirect("/chat")
+  // Check if user is logged in
+  const sessionToken = cookies().get("next-auth.session-token")?.value
+  
+  if (sessionToken) {
+    const session = await db.session.findUnique({
+      where: { sessionToken },
+      include: { user: true },
+    })
+    
+    if (session && session.expires > new Date()) {
+      redirect("/chat")
+    }
   }
 
   return (

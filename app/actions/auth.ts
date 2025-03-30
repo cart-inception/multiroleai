@@ -1,10 +1,9 @@
 "use server"
 
-import { signIn, signOut } from "@/auth"
 import { db } from "@/lib/db"
-import bcrypt from "bcrypt"
-import { AuthError } from "next-auth"
+import { hash, compare } from "bcrypt"
 import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
 
 export async function login(formData: FormData) {
   const email = formData.get("email") as string
@@ -15,13 +14,45 @@ export async function login(formData: FormData) {
   }
 
   try {
-    await signIn("credentials", { email, password, redirect: false })
-    redirect("/chat")
-  } catch (error) {
-    if (error instanceof AuthError) {
+    // Find the user
+    const user = await db.user.findUnique({
+      where: { email },
+    })
+
+    if (!user || !user.password) {
       return { error: "Invalid credentials" }
     }
-    throw error
+
+    // Check if password matches
+    const isPasswordValid = await compare(password, user.password)
+
+    if (!isPasswordValid) {
+      return { error: "Invalid credentials" }
+    }
+
+    // Create a session
+    const session = await db.session.create({
+      data: {
+        userId: user.id,
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        sessionToken: crypto.randomUUID(),
+      },
+    })
+
+    // Set a cookie
+    cookies().set({
+      name: "next-auth.session-token",
+      value: session.sessionToken,
+      httpOnly: true,
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+    })
+
+    redirect("/chat")
+  } catch (error) {
+    console.error("Login error:", error)
+    return { error: "An error occurred during login" }
   }
 }
 
@@ -34,29 +65,53 @@ export async function register(formData: FormData) {
     return { error: "All fields are required" }
   }
 
-  const existingUser = await db.user.findUnique({
-    where: { email },
-  })
+  try {
+    const existingUser = await db.user.findUnique({
+      where: { email },
+    })
 
-  if (existingUser) {
-    return { error: "Email already in use" }
+    if (existingUser) {
+      return { error: "Email already in use" }
+    }
+
+    const hashedPassword = await hash(password, 10)
+
+    const user = await db.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+      },
+    })
+
+    // Create a session
+    const session = await db.session.create({
+      data: {
+        userId: user.id,
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        sessionToken: crypto.randomUUID(),
+      },
+    })
+
+    // Set a cookie
+    cookies().set({
+      name: "next-auth.session-token",
+      value: session.sessionToken,
+      httpOnly: true,
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+    })
+
+    redirect("/chat")
+  } catch (error) {
+    console.error("Registration error:", error)
+    return { error: "An error occurred during registration" }
   }
-
-  const hashedPassword = await bcrypt.hash(password, 10)
-
-  await db.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      name,
-    },
-  })
-
-  await signIn("credentials", { email, password, redirect: false })
-  redirect("/chat")
 }
 
 export async function logout() {
-  await signOut({ redirectTo: "/" })
+  cookies().delete("next-auth.session-token")
+  redirect("/")
 }
 
